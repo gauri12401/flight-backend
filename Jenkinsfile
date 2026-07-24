@@ -18,9 +18,19 @@ pipeline {
                     reuseNode true
                 }
             }
+
+            environment {
+                HOME = "${WORKSPACE}"
+            }
+
             steps {
-                sh 'mvn clean package'
+                sh '''
+                    mkdir -p $HOME/.m2/repository
+                    mvn clean package
+                '''
             }
         }
+
     }
+
 }
