@@ -6,6 +6,8 @@ pipeline {
         DOCKER_USER = "gauri128"
         DOCKER_REPO = "flight-backend"
         IMAGE_NAME  = "flight-backend"
+        AWS_REGION  = "us-east-2"
+        CLUSTER_NAME = "cbz-cluster"
     }
 
     stages {
@@ -38,6 +40,7 @@ pipeline {
                     usernameVariable: 'DOCKER_USERNAME',
                     passwordVariable: 'DOCKER_PASSWORD'
                 )]) {
+
                     sh '''
                         docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
                     '''
@@ -67,6 +70,41 @@ pipeline {
                     docker rmi -f ${IMAGE_NAME}:${BUILD_NUMBER}
                     docker rmi -f ${DOCKER_USER}/${DOCKER_REPO}:${BUILD_NUMBER}
                 '''
+            }
+        }
+
+        stage('Update Deployment Image') {
+            steps {
+                sh '''
+                    sed -i "s|IMAGE_NAME|${DOCKER_USER}/${DOCKER_REPO}:${BUILD_NUMBER}|g" k8s/deployment.yaml
+
+                    echo "Updated Deployment.yaml"
+
+                    cat k8s/deployment.yaml
+                '''
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+
+                    sh '''
+                        aws eks update-kubeconfig \
+                        --region ${AWS_REGION} \
+                        --name ${CLUSTER_NAME}
+
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+
+                        kubectl get pods
+                        kubectl get svc
+                    '''
+                }
             }
         }
 
