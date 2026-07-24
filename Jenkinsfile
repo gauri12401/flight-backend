@@ -14,23 +14,18 @@ pipeline {
         stage('Maven Build') {
             agent {
                 docker {
-                    image 'maven:3.9.9-eclipse-temurin-21'
+                    image 'maven:3.9.9-eclipse-temurin-17'
                     reuseNode true
                 }
             }
 
-            environment {
-                HOME = "${WORKSPACE}"
-            }
-
             steps {
                 sh '''
-                    mkdir -p $HOME/.m2/repository
-                    mvn clean package
+                    mkdir -p .m2/repository
+                    mvn -Dmaven.repo.local=$WORKSPACE/.m2/repository clean package -DskipTests
                 '''
             }
         }
 
     }
-
 }
